@@ -5,7 +5,7 @@ using System.Security.AccessControl;
 using API.Models.Interfaces;
 using API.Models;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using MySql.Data.MySqlClient;
 using System;
 
 namespace API.Models
@@ -14,62 +14,112 @@ namespace API.Models
     {
         public List<Item> GetAllItems()
         {
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
+            //connecting to and opening the database
+            DBConnect db = new DBConnect();
+            bool isOpen = db.OpenConnection();
 
-            string stm = "SELECT * FROM Item";
-            using var cmd = new SQLiteCommand(stm, con);
-            
-            using SQLiteDataReader rdr = cmd.ExecuteReader();
-
-            List<Item> items = new List<Item>();
-            while(rdr.Read())
+            if (isOpen)
             {
-                items.Add(ParseItemFromRdr(rdr));
+                //if the open succeeded, we proceed with the sql commands
+                MySqlConnection con = db.GetCon();
+
+                string stm = "SELECT * FROM Item";
+                MySqlCommand cmd = new MySqlCommand(stm, con);
+                
+                List<Item> items = new List<Item>();
+
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while(rdr.Read())
+                    {
+                        items.Add(ParseItemFromRdr(rdr));
+                    }
+                }
+
+                db.CloseConnection();
+
+                return items;
             }
-            return items;
+            else
+            {
+                //if something goes wrong, we just return an empty list
+                return new List<Item>();
+            }
+
         }
         public Item GetItem(int id)
         {
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
+            //connecting to and opening the database
+            DBConnect db = new DBConnect();
+            bool isOpen = db.OpenConnection();
 
-            string stm = "SELECT * FROM Item WHERE \"Item ID\" = @id;";
-            using var cmd = new SQLiteCommand(stm, con);
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.Prepare();
-            using SQLiteDataReader rdr = cmd.ExecuteReader();
+            if (isOpen)
+            {
+                Item temp = new Item();
 
-            rdr.Read();
-            return ParseItemFromRdr(rdr);
+                //if the open succeeded, we proceed with the sql commands
+                MySqlConnection con = db.GetCon();
+
+                string stm = $"SELECT * FROM Item WHERE `Item ID` = @id;";
+                MySqlCommand cmd = new MySqlCommand(stm, con);
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.Prepare();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        temp = ParseItemFromRdr(rdr);
+                    }
+                }
+                
+                db.CloseConnection();
+
+                return temp;
+            }
+            else
+            {
+                return new Item();
+            }
         }
 
         public List<Item> GetTransactionItems(int id)
         {
             List<Item> transItems = new List<Item>();
 
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
+            //connecting to and opening the database
+            DBConnect db = new DBConnect();
+            bool isOpen = db.OpenConnection();
 
-            string stm = "SELECT * FROM Item WHERE `Transaction ID` = @transID";
-            using var cmd = new SQLiteCommand(stm, con);
-            cmd.Parameters.AddWithValue("@transID", id);
-            cmd.Prepare();
-            
-            using SQLiteDataReader rdr = cmd.ExecuteReader();
-
-            while(rdr.Read())
+            if (isOpen)
             {
-                transItems.Add(ParseItemFromRdr(rdr));
+                //if the open succeeded, we proceed with the sql commands
+                MySqlConnection con = db.GetCon();
+
+                string stm = "SELECT * FROM Item WHERE `Transaction ID` = @transID";
+                MySqlCommand cmd = new MySqlCommand(stm, con);
+                cmd.Parameters.AddWithValue("@transID", id);
+                cmd.Prepare();
+                
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while(rdr.Read())
+                    {
+                        transItems.Add(ParseItemFromRdr(rdr));
+                    }
+                }
+
+                db.CloseConnection();
+
+                return transItems;
             }
-            return transItems;
+            else
+            {
+                return new List<Item>();
+            }
         }
 
         //this method takes in a sqlite reader and returns an item; the potentially null fields make this logic worth encapsulating
-        public Item ParseItemFromRdr(SQLiteDataReader rdr)
+        public Item ParseItemFromRdr(MySqlDataReader rdr)
         {
             //this is the purchase status boolean
             Boolean isPurchased = true;

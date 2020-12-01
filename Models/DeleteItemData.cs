@@ -1,6 +1,7 @@
 using API.Models.Interfaces;
 using System.IO;
-using System.Data.SQLite;
+using MySql.Data;
+using MySql.Data.MySqlClient;
 
 namespace API.Models
 {
@@ -8,20 +9,26 @@ namespace API.Models
     {
         public void DeleteItem(int id)
         {
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
+            //connecting to and opening the database
+            DBConnect db = new DBConnect();
+            bool isOpen = db.OpenConnection();
 
-            //defining the string
-            string stm = @"DELETE FROM Item WHERE `Item ID` = @id";
+            if (isOpen)
+            {
+                //if the open succeeded, we proceed with the sql commands
+                MySqlConnection con = db.GetCon();
 
-            //making new command
-            using var cmd = new SQLiteCommand(stm, con);
+                //defining the string
+                string stm = @"DELETE FROM Item WHERE `Item ID` = @id";
 
-            //preparing the command and executing it; this deletes the record with the right id
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.Prepare();
-            cmd.ExecuteNonQuery();
+                //making new command
+                using var cmd = new MySqlCommand(stm, con);
+
+                //preparing the command and executing it; this deletes the record with the right id
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 }
