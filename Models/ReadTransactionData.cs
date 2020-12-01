@@ -5,7 +5,7 @@ using System.Security.AccessControl;
 using API.Models.Interfaces;
 using API.Models;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using MySql.Data.MySqlClient;
 using System;
 
 namespace API.Models
@@ -16,27 +16,40 @@ namespace API.Models
         {
             //making an item selector up front
             IGetTransactionItems readObj = new ReadItemData();
-
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
-
-            string stm = "SELECT * FROM Transact";
-            using var cmd = new SQLiteCommand(stm, con);
-            
-            using SQLiteDataReader rdr = cmd.ExecuteReader();
-
+            //making an empty list of transactions            
             List<Transaction> transactions = new List<Transaction>();
-            while(rdr.Read())
-            {
-                Transaction newTrans = new Transaction() {TransactionID = rdr.GetInt32(0), TransactionDate = DateTime.Parse(rdr.GetString(1)), AmtDiscounted = rdr.GetDouble(2), PaymentType = rdr.GetString(3), EmployeeID = rdr.GetInt32(4), CustomerEmail = rdr.GetString(5)};
 
-                List<Item> transItems = readObj.GetTransactionItems(newTrans.TransactionID);
-                newTrans.ItemIDs = GetItemIDs(transItems);
-                newTrans.Subtotal = GetSubtotal(transItems);
+			//connecting to and opening the database
+			DBConnect db = new DBConnect();
+			bool isOpen = db.OpenConnection();
 
-                transactions.Add(newTrans);   
+			if (isOpen)
+			{
+				//if the open succeeded, we proceed with the sql commands
+				MySqlConnection con = db.GetCon();
+
+                string stm = "SELECT * FROM Transact";
+                MySqlCommand cmd = new MySqlCommand(stm, con);
+                
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while(rdr.Read())
+                    {
+                        Transaction newTrans = new Transaction() {TransactionID = rdr.GetInt32(0), TransactionDate = DateTime.Parse(rdr.GetString(1)), AmtDiscounted = rdr.GetDouble(2), PaymentType = rdr.GetString(3), EmployeeID = rdr.GetInt32(4), CustomerEmail = rdr.GetString(5)};
+
+                        List<Item> transItems = readObj.GetTransactionItems(newTrans.TransactionID);
+                        newTrans.ItemIDs = GetItemIDs(transItems);
+                        newTrans.Subtotal = GetSubtotal(transItems);
+
+                        transactions.Add(newTrans);   
+                    }
+                }
+
+                db.CloseConnection();
+
+                return transactions;
             }
+
             return transactions;
         }
 
