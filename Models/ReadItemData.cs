@@ -60,7 +60,7 @@ namespace API.Models
                 //if the open succeeded, we proceed with the sql commands
                 MySqlConnection con = db.GetCon();
 
-                string stm = $"SELECT * FROM Item WHERE `Item ID` = @id;";
+                string stm = "SELECT * FROM Item WHERE `Item ID` = @id;";
                 MySqlCommand cmd = new MySqlCommand(stm, con);
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Prepare();

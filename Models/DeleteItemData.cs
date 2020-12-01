@@ -22,12 +22,14 @@ namespace API.Models
                 string stm = @"DELETE FROM Item WHERE `Item ID` = @id";
 
                 //making new command
-                using var cmd = new MySqlCommand(stm, con);
+                MySqlCommand cmd = new MySqlCommand(stm, con);
 
                 //preparing the command and executing it; this deletes the record with the right id
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Prepare();
                 cmd.ExecuteNonQuery();
+
+                db.CloseConnection();
             }
         }
     }
