@@ -1,7 +1,7 @@
 using System.Data;
 using API.Models.Interfaces;
 using System.IO;
-using System.Data.SQLite;
+using MySql.Data.MySqlClient;
 using System;
 
 namespace API.Models
@@ -11,26 +11,45 @@ namespace API.Models
         //returning the employee's id or -1 if not found
         public int FindEmployee(Employee value)
         {
-            string cs = $"URI=file:{Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Database\\TitleTownCardsDatabase.db")}";
-            using var con = new SQLiteConnection(cs);
-            con.Open();
+            //connecting to and opening the database
+            DBConnect db = new DBConnect();
+            bool isOpen = db.OpenConnection();
 
-            string stm = @"SELECT `Employee ID` FROM Employee WHERE `Username` = @username AND `Password` = @password;";
-            using var cmd = new SQLiteCommand(stm, con);
-            cmd.Parameters.AddWithValue("@username", value.Username);
-            cmd.Parameters.AddWithValue("@password", value.Password);
-            cmd.Prepare();
+            if (isOpen)
+            {
+                int temp = -1;
 
-            using SQLiteDataReader rdr = cmd.ExecuteReader();
-            rdr.Read();
+                //if the open succeeded, we proceed with the sql commands
+                MySqlConnection con = db.GetCon();
 
-            //try to return the id of the employee
-            try {
-                return Convert.ToInt32(rdr[0]);
-            } catch {
-                //if the employee doesn't exist, an exception will be thrown, leading to -1 being returned
-                return -1;
+                string stm = @"SELECT `Employee ID` FROM Employee WHERE `Username` = @username AND `Password` = @password;";
+                MySqlCommand cmd = new MySqlCommand(stm, con);
+                cmd.Parameters.AddWithValue("@username", value.Username);
+                cmd.Parameters.AddWithValue("@password", value.Password);
+                cmd.Prepare();
+
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        //try to return the rewards points from the customer
+                        try {
+                            temp = Convert.ToInt32(rdr[0]);
+                        } catch {
+                            db.CloseConnection();
+                            //if the customer doesn't exist, this will throw an exception; if the customer doesn't exist, return -1 as rewards points
+                            return temp;
+                        }
+                    }
+                }
+                
+                db.CloseConnection();
+
+                return temp;
             }
+
+            //this sentinel value will indicate that the connection failed, which might be helpful on the front-end
+            return -2;
         }
     }
 }
